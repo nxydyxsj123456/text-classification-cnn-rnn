@@ -9,17 +9,32 @@ import time
 from datetime import timedelta
 
 import numpy as np
+import sklearn
 import tensorflow as tf
+
+print(tf.__version__)
+
+# print(keras.__version__)
+
 from sklearn import metrics
 
 from cnn_model import TCNNConfig, TextCNN
 from data.cnews_loader import read_vocab, read_category, batch_iter, process_file, build_vocab
 
-base_dir = 'data/cnews'
-train_dir = os.path.join(base_dir, 'cnews.train.txt')
-test_dir = os.path.join(base_dir, 'cnews.test.txt')
-val_dir = os.path.join(base_dir, 'cnews.val.txt')
-vocab_dir = os.path.join(base_dir, 'cnews.vocab.txt')
+# base_dir = 'data/cnews'
+# train_dir = os.path.join(base_dir, 'cnews.train.txt')
+# test_dir = os.path.join(base_dir, 'cnews.test.txt')
+# val_dir = os.path.join(base_dir, 'cnews.val.txt')
+# vocab_dir = os.path.join(base_dir, 'cnews.vocab.txt')
+
+
+base_dir = 'data/CSIC2010'
+train_dir = os.path.join(base_dir, 'train.txt')
+test_dir = os.path.join(base_dir, 'test.txt')
+val_dir = os.path.join(base_dir, 'val.txt')
+vocab_dir = os.path.join(base_dir, 'vocab.txt')
+
+
 
 save_dir = 'checkpoints/textcnn'
 save_path = os.path.join(save_dir, 'best_validation')  # 最佳验证结果保存路径
@@ -58,6 +73,7 @@ def evaluate(sess, x_, y_):
 
 
 def train():
+
     print("Configuring TensorBoard and Saver...")
     # 配置 Tensorboard，重新训练时，请将tensorboard文件夹删除，不然图会覆盖
     tensorboard_dir = 'tensorboard/textcnn'
@@ -80,7 +96,7 @@ def train():
     x_train, y_train = process_file(train_dir, word_to_id, cat_to_id, config.seq_length)
     x_val, y_val = process_file(val_dir, word_to_id, cat_to_id, config.seq_length)
     time_dif = get_time_dif(start_time)
-    print("Time usage:", time_dif)
+    print("数据集处理时间Time usage:", time_dif)
 
     # 创建session
     session = tf.Session()
@@ -171,7 +187,40 @@ def test():
 
     # 评估
     print("Precision, Recall and F1-Score...")
+
     print(metrics.classification_report(y_test_cls, y_pred_cls, target_names=categories))
+    print("AUC...")
+    print(sklearn.metrics.roc_auc_score(y_test_cls, y_pred_cls))
+
+
+
+
+
+    from sklearn.metrics import roc_curve, auc
+    fpr, tpr, thresholds = roc_curve(y_test_cls, y_pred_cls)
+    ttt=0
+    for i,rate in enumerate(tpr):
+        if rate > 0.05:
+            ttt=thresholds[i]
+            break
+    print(ttt)
+
+
+    roc_auc = auc(fpr, tpr)
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.plot(fpr, tpr, label='ROC curve (area = %0.4f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
+    plt.xlim([-0.05, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.axvline(0.05,c='r',ls='-.')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC curve')
+    plt.legend(loc="lower right")
+    plt.show()
+
+
 
     # 混淆矩阵
     print("Confusion Matrix...")
@@ -180,6 +229,17 @@ def test():
 
     time_dif = get_time_dif(start_time)
     print("Time usage:", time_dif)
+
+def loadData(file):
+    with open(file, 'r', encoding="utf8") as f:
+        data = f.readlines()
+    result = []
+    for d in data:
+        d = d.strip()
+        if (len(d) > 0):
+            result.append(d)
+    return result
+
 
 
 if __name__ == '__main__':
@@ -190,9 +250,12 @@ if __name__ == '__main__':
     config = TCNNConfig()
     if not os.path.exists(vocab_dir):  # 如果不存在词汇表，重建
         build_vocab(train_dir, vocab_dir, config.vocab_size)
-    categories, cat_to_id = read_category()
-    words, word_to_id = read_vocab(vocab_dir)
+    categories, cat_to_id = read_category()  #获得名称到id的映射
+    words, word_to_id = read_vocab(vocab_dir)#获得词汇到id的映射
+
+
     config.vocab_size = len(words)
+    config.num_classes=len(categories)
     model = TextCNN(config)
 
     if sys.argv[1] == 'train':

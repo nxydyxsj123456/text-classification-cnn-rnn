@@ -4,8 +4,10 @@ import sys
 from collections import Counter
 
 import numpy as np
-import tensorflow.keras as kr
+from tensorflow.python import keras
 
+#import tensorflow.python.keras as kr
+#import keras as kr
 if sys.version_info[0] > 2:
     is_py3 = True
 else:
@@ -47,6 +49,7 @@ def read_file(filename):
         for line in f:
             try:
                 label, content = line.strip().split('\t')
+                content=content.strip()
                 if content:
                     contents.append(list(native_content(content)))
                     labels.append(native_content(label))
@@ -84,6 +87,7 @@ def read_vocab(vocab_dir):
 def read_category():
     """读取分类目录，固定"""
     categories = ['体育', '财经', '房产', '家居', '教育', '科技', '时尚', '时政', '游戏', '娱乐']
+    categories = ['0', '1']
 
     categories = [native_content(x) for x in categories]
 
@@ -97,20 +101,39 @@ def to_words(content, words):
     return ''.join(words[x] for x in content)
 
 
+def judgex(x,word_to_id,max):
+    if x in word_to_id:
+        return word_to_id[x]
+    else:
+        #print("111")
+        print(x==" ")
+        return max
+
 def process_file(filename, word_to_id, cat_to_id, max_length=600):
     """将文件转换为id表示"""
     contents, labels = read_file(filename)
 
     data_id, label_id = [], []
     for i in range(len(contents)):
-        data_id.append([word_to_id[x] for x in contents[i] if x in word_to_id])
+        #data_id.append([judgex(x,word_to_id,len(word_to_id)) for x in contents[i] ])
+        data_id.append([word_to_id[x]  for x in contents[i] if x in word_to_id])
+
         label_id.append(cat_to_id[labels[i]])
 
-    # 使用keras提供的pad_sequences来将文本pad为固定长度
-    x_pad = kr.preprocessing.sequence.pad_sequences(data_id, max_length)
-    y_pad = kr.utils.to_categorical(label_id, num_classes=len(cat_to_id))  # 将标签转换为one-hot表示
+    # 使用keras提供的pad_sequences来将文本pad为固定长度  在前面padding 或截断
+    x_pad = keras.preprocessing.sequence.pad_sequences(data_id, max_length)
+    y_pad = keras.utils.to_categorical(label_id, num_classes=len(cat_to_id))  # 将标签转换为one-hot表示
 
     return x_pad, y_pad
+
+def process_single_URL(URL, word_to_id, cat_to_id, max_length=600):
+    """将URL转换为id表示"""
+    data_id=[judgex(x,word_to_id,len(word_to_id)) for x in URL]
+    data_id=[data_id]
+    # 使用keras提供的pad_sequences来将文本pad为固定长度  在前面padding 或截断
+    x_pad = keras.preprocessing.sequence.pad_sequences(data_id, max_length)
+    return x_pad
+
 
 
 def batch_iter(x, y, batch_size=64):

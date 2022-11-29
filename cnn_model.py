@@ -7,7 +7,7 @@ class TCNNConfig(object):
     """CNN配置参数"""
 
     embedding_dim = 64  # 词向量维度
-    seq_length = 600  # 序列长度
+    seq_length = 500  # 序列长度
     num_classes = 10  # 类别数
     num_filters = 256  # 卷积核数目
     kernel_size = 5  # 卷积核尺寸
@@ -49,7 +49,7 @@ class TextCNN(object):
             # CNN layer
             conv = tf.layers.conv1d(embedding_inputs, self.config.num_filters, self.config.kernel_size, name='conv')
             # global max pooling layer
-            gmp = tf.reduce_max(conv, reduction_indices=[1], name='gmp')
+            gmp = tf.reduce_max(conv, reduction_indices=[1], name='gmp')  #取最大值并减小维度
 
         with tf.name_scope("score"):
             # 全连接层，后面接dropout以及relu激活
